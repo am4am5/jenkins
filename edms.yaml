@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aismv-edms-jar
+  labels:
+    app: aismv-edms-jar
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: aismv-edms-jar
+  template:
+    metadata:
+      labels:
+        app: aismv-edms-jar
+    spec:
+      containers:
+      - image: 172.16.9.49:30020/micro/aismv-edms-jar:latest
+        name: aismv-edms-jar
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aismv-edms-jar
+spec:
+  type: NodePort
+  selector:
+    app: aismv-edms-jar
+  ports:
+  - nodePort: 31101
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
