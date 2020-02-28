@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: aismv-edms-jar
+  namespace: aismv
   labels:
     app: aismv-edms-jar
 spec:
@@ -27,6 +28,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: aismv-edms-jar
+  namespace: aismv
 spec:
   type: NodePort
   selector:
