@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aismv-back-edms
+  namespace: aismv
+  labels:
+    app: aismv-back-edms
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: aismv-back-edms
+  template:
+    metadata:
+      labels:
+        app: aismv-back-edms
+    spec:
+      containers:
+      - image: 172.16.9.49:30020/back/aismv-back-edms:latest
+        name: aismv-back-edms
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aismv-back-edms
+  namespace: aismv
+spec:
+  type: NodePort
+  selector:
+    app: aismv-back-edms
+  ports:
+  - nodePort: 31101
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
