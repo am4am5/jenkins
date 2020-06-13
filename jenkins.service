@@ -1,0 +1,11 @@
+[Unit]
+Description=jenkins
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/java -Djava.awt.headless=true -DJENKINS_HOME=/var/lib/jenkins -Dmail.smtp.starttls.enable=true -Dmail.smtps.ssl.protocols=TLSv1.2 -jar /usr/lib/jenkins/jenkins.war --daemon --logfile=/var/log/jenkins/jenkins.log --httpPort=80 --debug=5 --handlerCountMax=100 --handlerCountMaxIdle=20 --accessLoggerClassName=winstone.accesslog.SimpleAccessLogger --simpleAccessLogger.format=combined --simpleAccessLogger.file=/var/log/jenkins/access_log 
+User=jenkins
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
