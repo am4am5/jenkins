@@ -24,7 +24,7 @@ pipeline {
             }
         stage('Deploy to Kubernetes') {
             echo "5. Deploy to Kubernetes"
-            sh "kubectl set image deployment/aismv-back-dfs aismv-back-dfs=registry.nces.by/aismv/back/aismv-back-dfs:$BUILD_NUMBER -n aismv --kubeconfig /opt/tomcat/.jenkins/nces.kube"
+            sh "kubectl set image deployment/aismv-back-dfs aismv-back-dfs=registry.nces.by/aismv/back/aismv-back-dfs:$BUILD_NUMBER -n aismv --kubeconfig /opt/tomcat/.jenkins/aismv.kube"
         }
         stage('Archive artifact') {
             echo "6. Archive artifact"
