@@ -4,7 +4,7 @@ node('jenkins-jnlp') {
 
     stage('Git') {
         echo "1.Get source code"
-        checkout scm
+        checkout([$class: 'GitSCM', branches: [[name: '*/master']], userRemoteConfigs: [[credentialsId: 'malexandrov', url: 'https://10.101.1.203/govby/aismv.git']]])
         }
     }
     stage('Compile jar') {
