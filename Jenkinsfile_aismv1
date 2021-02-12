@@ -35,7 +35,7 @@ pipeline {
             script {
                 if (currentBuild.currentResult == 'FAILURE') {
                         echo "7. Email notification"
-                        emailext attachLog: true, body: '$DEFAULT_CONTENT', compressLog: true, replyTo: '$DEFAULT_REPLYTO', subject: '$DEFAULT_SUBJECT', to: 'MAlexandrov@iba.by, AKhamichonak@iba.by, UHanushchanka@iba.by'
+                        emailext attachLog: true, body: '$DEFAULT_CONTENT', compressLog: true, replyTo: '$DEFAULT_REPLYTO', subject: '$DEFAULT_SUBJECT', to: 'MAlexandrov@iba.by'
                 }
             }
         }
