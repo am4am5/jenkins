@@ -21,7 +21,7 @@ node('jenkins-jnlp') {
         echo "4.Push Docker image"
         withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dockerhubPassword', usernameVariable: 'dockerhubUser')]) {
             sh "docker login -u ${dockerhubUser} -p ${dockerhubPassword}"
-            sh "docker push 172.16.9.49:30020/aismv/back/aismv-back-dfs:$BUILD_NUMBER"
+            sh "docker push registry.nces.by/aismv/back/aismv-back-dfs:$BUILD_NUMBER"
         }
     }
     stage('Deploy') {
