@@ -2,35 +2,30 @@ node('jenkins-jnlp') {
     env.MVN_HOME = "${tool 'Maven'}"
     env.PATH="${env.MVN_HOME}/bin:${env.PATH}"
 
-    stage('Prepare') {
-        echo "1.Prepare Stage"
+    stage('Git') {
+        echo "1.Get source code"
         checkout scm
-        script {
-            build_tag = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-            if (env.BRANCH_NAME != 'master') {
-                build_tag = "${env.BRANCH_NAME}-${build_tag}"
-            }
         }
     }
-    stage('Compile') {
-        echo "2.Compile SpringBoot App Stage"
-        sh "mvn clean package -Dmaven.test.skip=true"
+    stage('Compile jar') {
+        echo "2.Compile jar"
+        sh "cd ./DynamicFormatSystem"
+        sh "mvn clean package"
+        sh "cp -f ./application/target/DynamicFormatSystem-0.0.1-SNAPSHOT.jar ./dfs.jar"
     }
-    stage('Build') {
-        echo "3.Build Docker Image Stage"
-        sh "docker build -t hustakin/test:${build_tag} ."
-    }
-    stage('Push') {
-        echo "4.Push Docker Image Stage"
-        withCredentials([usernamePassword(credentialsId: 'dockerHub', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
-            sh "docker login -u ${dockerHubUser} -p ${dockerHubPassword}"
-            sh "docker push hustakin/test:${build_tag}"
+    stage('Build Docker') {
+        echo "3.Build Docker image"
+        sh "docker build -t registry.nces.by/aismv/back/aismv-back-dfs:$BUILD_NUMBER -f Dockerfile_nces ."
+        }
+    stage('Push to Docker Registry') {
+        echo "4.Push Docker image"
+        withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dockerhubPassword', usernameVariable: 'dockerhubUser')]) {
+            sh "docker login -u ${dockerhubUser} -p ${dockerhubPassword}"
+            sh "docker push 172.16.9.49:30020/aismv/back/aismv-back-dfs:$BUILD_NUMBER"
         }
     }
     stage('Deploy') {
-        echo "5. Deploy To K8S Cluster Stage"
-        sh "sed -i 's/<BUILD_TAG>/${build_tag}/' k8s.yaml"
-        sh "sed -i 's/<BRANCH_NAME>/${env.BRANCH_NAME}/' k8s.yaml"
-        sh "kubectl apply -f k8s.yaml --record"
+        echo "5. Deploy To Kubernetes"
+        sh "kubectl set image deployment/aismv-back-dfs aismv-back-dfs=registry.nces.by/aismv/back/aismv-back-dfs:$BUILD_NUMBER -n aismv --kubeconfig /opt/tomcat/.jenkins/nces.kube"
     }
 }
