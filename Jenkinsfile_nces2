@@ -1,0 +1,113 @@
+env.CONTEXT = "aismv"
+env.DOMAIN = "nces.by"                       // domain for ingress in K8s and others
+env.DOCKER_URL = "registry.${DOMAIN}"        // Docker Registry URL
+env.REG_CRED = "registry-cred"               // Docker Registry secret
+env.STORAGE_CLASS = "nfs-core"               // Storage class name
+env.K8S_VIP = "10.111.2.100"                 // Virtual IP of Kubernetes Cluster
+
+
+def label = "${CONTEXT}-${UUID.randomUUID().toString()}"  // generate UUID for node label in kubernetes
+def yamlSpec = """
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: k8s-jenkins-01
+  tolerations:
+    - key: key
+      operator: Exists
+      effect: NoSchedule
+  hostAliases:
+  - ip: "${K8S_VIP}"
+    hostnames:
+    - "registry.${DOMAIN}"
+  - ip: "10.101.1.203"
+    hostnames:
+    - "gitoais.nces.by"
+"""
+podTemplate(label: label, yaml: yamlSpec,
+        containers: [
+                containerTemplate(
+                        name: 'maven',
+                        image: 'registry.nces.by/maven:aismv',
+                        ttyEnabled: true,
+                        command: 'cat'),
+                containerTemplate(
+                        name: 'docker',
+                        image: 'docker:stable',
+                        ttyEnabled: true,
+                        command: 'cat'),
+                containerTemplate(
+                        name: 'kubectl',
+                        image: 'registry.nces.by/base/kubectl:aismv',
+                        ttyEnabled: true, command: 'cat')
+        ],
+        imagePullSecrets: ['registry-cred'],
+        volumes: [
+                hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
+                persistentVolumeClaim(claimName: 'm2-loc', mountPath: '/root/.m2', readOnly: false)
+
+        ])
+        {
+            node(label) {
+                stage('Git') {
+                    sh '''
+				                git config --global http.sslVerify false
+                        git config --system http.sslVerify false
+				                export GIT_SSL_NO_VERIFY=1
+                        echo "1.Get source code"
+				    '''
+               checkout([$class: 'GitSCM', branches: [[name: '*/master']], userRemoteConfigs: [[credentialsId: 'malexandrov', url: 'https://gitoais.nces.by/govby/aismv.git']]])
+               }
+               
+               container('maven') {
+//                  stage('build oais general') {
+                        dir('/home/jenkins/agent/workspace/prod/') {
+                            sh label: 'build maven oais general', script: '''
+                            mvn package -Dmaven.test.skip=true -f oais/pom.xml
+                            '''
+                        }
+                    }
+                   
+                    container('docker'){
+                    stage('Build Docker images') {
+                        withDockerRegistry(credentialsId: 'docker-reg', url: 'https://registry.nces.by') {
+                            parallel(
+                                    'build login static docker image': {
+                                        dir('/home/jenkins/agent/workspace/prod/') {
+                                            sh label: 'build login static docker image', script: '''
+                                            cp jenkinsfiles/dockerfiles-nces/Dockerfile-idnt-proto-http frontend
+                                            /bin/cp -f frontend/nginx_http.conf frontend/nginx.conf
+                                            cd frontend
+                                            docker build -t registry.nces.by/core/core-identity-static-${gitlabBranch}:${BUILD_ID} -f Dockerfile-idnt-proto-http .                                            
+                                            '''
+                                        }
+                                    }
+                            )
+                        }
+                    }
+                    stage('Push docker images to upstream') {
+                        withDockerRegistry(credentialsId: 'docker-reg', url: 'https://registry.nces.by') {
+                            parallel(
+                                    'push login static': {
+                                        sh 'docker push registry.nces.by/core/core-identity-static-${gitlabBranch}:${BUILD_ID}'
+                                    }
+                            )
+                        }
+                    }
+
+                }
+                container('kubectl') {
+                    stage('update images for env') {
+                        withKubeConfig(credentialsId: 'nces-k8s') {
+                            parallel(
+                                    /*'start all replicas to 1':{
+                                        sh 'kubectl -n ${CONTEXT} scale deployments --all --replicas=1'
+                                    }
+
+
+                }
+                
+                        }
+                    }
+                }
+            }
+        }
